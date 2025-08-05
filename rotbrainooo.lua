@@ -5,10 +5,12 @@
     - Key Login System (VSK-XXXXXX)
     - Sidebar: Home, Visual, Misc, Movement
     - Player ESP (Name & ThroughWalls)
+    - ESP Name Color Picker
     - Lock ESP (Base Lock Timer)
     - Auto Hit (Auto attack)
     - Speed & Super Jump
     - Toggle Buttons neben Funktionen
+    - Menü minimierbar mit kleinem Icon
     - Created by @vskdeniss
 ]]
 
@@ -247,394 +249,333 @@ local contentFrame = createFrame({
 })
 createUICorner(contentFrame, UDim.new(0, 10))
 
--- Funktion zum Wechseln der Tabs
-local function switchTab(name)
-    selectedTab = name
-    for _, btn in pairs(sidebarButtons) do
-        btn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    end
-    for _, btn in pairs(sidebarButtons) do
-        if btn.Name == name then
-            btn.BackgroundColor3 = Color3.fromRGB(255, 105, 180)
-        end
-    end
-    -- Inhalt löschen
-    for _, child in pairs(contentFrame:GetChildren()) do
-        if not child:IsA("UIListLayout") then
-            child:Destroy()
-        end
-    end
-    -- Inhalte je Tab hinzufügen:
-    if name == "Home" then
-        local homeTitle = createTextLabel({
-            Parent = contentFrame,
-            Size = UDim2.new(1, -20, 0, 40),
-            Position = UDim2.new(0, 10, 0, 10),
-            BackgroundTransparency = 1,
-            TextColor3 = Color3.fromRGB(255, 105, 180),
-            Font = Enum.Font.GothamBold,
-            TextSize = 30,
-            Text = "Welcome to VSK Menu",
-            TextXAlignment = Enum.TextXAlignment.Left,
-        })
-        local homeDesc = createTextLabel({
-            Parent = contentFrame,
-            Size = UDim2.new(1, -20, 0, 80),
-            Position = UDim2.new(0, 10, 0, 60),
-            BackgroundTransparency = 1,
-            TextColor3 = Color3.fromRGB(230,230,230),
-            Font = Enum.Font.Gotham,
-            TextSize = 18,
-            Text = "This menu supports:\n- Player ESP (Names & Through Walls)\n- Lock ESP (Timer)\n- Auto Hit\n- Speed & Super Jump\n\nCreated by @vskdeniss",
-            TextWrapped = true,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            TextYAlignment = Enum.TextYAlignment.Top,
-        })
-    elseif name == "Visual" then
-        -- Player ESP toggle
-        local espLabel = createTextLabel({
-            Parent = contentFrame,
-            Size = UDim2.new(0.8, -10, 0, 30),
-            Position = UDim2.new(0, 10, 0, 10),
-            BackgroundTransparency = 1,
-            TextColor3 = Color3.fromRGB(255, 105, 180),
-            Font = Enum.Font.GothamBold,
-            TextSize = 22,
-            Text = "Player ESP",
-            TextXAlignment = Enum.TextXAlignment.Left,
-        })
-        local playerEspToggle = createToggleButton(contentFrame, UDim2.new(0.82, 0, 0, 10), function(state)
-            playerESPEnabled = state
-        end)
-        
-        -- Lock ESP toggle
-        local lockLabel = createTextLabel({
-            Parent = contentFrame,
-            Size = UDim2.new(0.8, -10, 0, 30),
-            Position = UDim2.new(0, 10, 0, 60),
-            BackgroundTransparency = 1,
-            TextColor3 = Color3.fromRGB(255, 105, 180),
-            Font = Enum.Font.GothamBold,
-            TextSize = 22,
-            Text = "Lock ESP (Timer)",
-            TextXAlignment = Enum.TextXAlignment.Left,
-        })
-        local lockEspToggle = createToggleButton(contentFrame, UDim2.new(0.82, 0, 0, 60), function(state)
-            lockESPEnabled = state
-        end)
-        
-    elseif name == "Misc" then
-        local autoHitLabel = createTextLabel({
-            Parent = contentFrame,
-            Size = UDim2.new(0.8, -10, 0, 30),
-            Position = UDim2.new(0, 10, 0, 10),
-            BackgroundTransparency = 1,
-            TextColor3 = Color3.fromRGB(255, 105, 180),
-            Font = Enum.Font.GothamBold,
-            TextSize = 22,
-            Text = "Auto Hit",
-            TextXAlignment = Enum.TextXAlignment.Left,
-        })
-        local autoHitToggle = createToggleButton(contentFrame, UDim2.new(0.82, 0, 0, 10), function(state)
-            autoHitEnabled = state
-        end)
-    elseif name == "Movement" then
-        local speedLabel = createTextLabel({
-            Parent = contentFrame,
-            Size = UDim2.new(0.8, -10, 0, 30),
-            Position = UDim2.new(0, 10, 0, 10),
-            BackgroundTransparency = 1,
-            TextColor3 = Color3.fromRGB(255, 105, 180),
-            Font = Enum.Font.GothamBold,
-            TextSize = 22,
-            Text = "Speed",
-            TextXAlignment = Enum.TextXAlignment.Left,
-        })
-        local speedToggle = createToggleButton(contentFrame, UDim2.new(0.82, 0, 0, 10), function(state)
-            speedEnabled = state
-        end)
-        
-        local superJumpLabel = createTextLabel({
-            Parent = contentFrame,
-            Size = UDim2.new(0.8, -10, 0, 30),
-            Position = UDim2.new(0, 10, 0, 60),
-            BackgroundTransparency = 1,
-            TextColor3 = Color3.fromRGB(255, 105, 180),
-            Font = Enum.Font.GothamBold,
-            TextSize = 22,
-            Text = "Super Jump",
-            TextXAlignment = Enum.TextXAlignment.Left,
-        })
-        local superJumpToggle = createToggleButton(contentFrame, UDim2.new(0.82, 0, 0, 60), function(state)
-            superJumpEnabled = state
-        end)
-    end
-end
+local pages = {}
 
--- Sidebar Buttons erstellen
-local btnHeight = 60
 for i, tab in ipairs(tabs) do
     local btn = createButton({
         Parent = sidebar,
-        Name = tab.Name,
-        Size = UDim2.new(1, 0, 0, btnHeight),
-        Position = UDim2.new(0, 0, 0, (i-1)*btnHeight),
+        Size = UDim2.new(1, 0, 0, 55),
+        Position = UDim2.new(0, 0, 0, (i-1)*55),
         BackgroundColor3 = Color3.fromRGB(20, 20, 20),
-        Text = tab.Icon .. "  " .. tab.Name,
+        TextColor3 = Color3.fromRGB(255, 105, 180),
         Font = Enum.Font.GothamBold,
         TextSize = 24,
-        TextColor3 = Color3.fromRGB(255, 105, 180),
+        Text = tab.Icon .. "  " .. tab.Name,
         TextXAlignment = Enum.TextXAlignment.Left,
         AutoButtonColor = false,
+        BorderSizePixel = 0,
     })
-    createUICorner(btn, UDim.new(0, 10))
-    btn.MouseButton1Click:Connect(function()
-        switchTab(tab.Name)
+    createUICorner(btn, UDim.new(0, 6))
+
+    btn.MouseEnter:Connect(function()
+        if selectedTab ~= btn then
+            TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}):Play()
+        end
     end)
-    table.insert(sidebarButtons, btn)
+    btn.MouseLeave:Connect(function()
+        if selectedTab ~= btn then
+            TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(20, 20, 20)}):Play()
+        end
+    end)
+    btn.MouseButton1Click:Connect(function()
+        if selectedTab then
+            selectedTab.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        end
+        selectedTab = btn
+        selectedTab.BackgroundColor3 = Color3.fromRGB(255, 105, 180)
+        for _, page in pairs(pages) do
+            page.Visible = false
+        end
+        pages[tab.Name].Visible = true
+    end)
+
+    sidebarButtons[tab.Name] = btn
 end
 
-switchTab("Home")
+-- PAGE: Home
+local homePage = createFrame({
+    Parent = contentFrame,
+    Size = UDim2.new(1, 0, 1, 0),
+    BackgroundTransparency = 1,
+    Visible = false,
+})
+pages["Home"] = homePage
 
--- TOGGLE VARS
-local playerESPEnabled = false
-local lockESPEnabled = false
-local autoHitEnabled = false
-local speedEnabled = false
-local superJumpEnabled = false
+local homeText = createTextLabel({
+    Parent = homePage,
+    Size = UDim2.new(1, 0, 0, 30),
+    Position = UDim2.new(0, 0, 0, 10),
+    BackgroundTransparency = 1,
+    TextColor3 = Color3.fromRGB(255, 105, 180),
+    Font = Enum.Font.GothamBold,
+    TextSize = 24,
+    Text = "created by @vskdeniss",
+    TextXAlignment = Enum.TextXAlignment.Center,
+})
 
--- ESP IMPLEMENTATION
+-- PAGE: Visual
+local visualPage = createFrame({
+    Parent = contentFrame,
+    Size = UDim2.new(1, 0, 1, 0),
+    BackgroundTransparency = 1,
+    Visible = false,
+})
+pages["Visual"] = visualPage
 
-local espFolder = Instance.new("Folder", game.CoreGui)
-espFolder.Name = "VSK_ESP_Folder"
+local espColor = Color3.fromRGB(255, 105, 180)
 
-local espBoxes = {}
-
-local function createESPForPlayer(targetPlayer)
-    if espBoxes[targetPlayer] then return end
-    local box = Instance.new("BoxHandleAdornment")
-    box.Adornee = nil
-    box.AlwaysOnTop = true
-    box.ZIndex = 10
-    box.Color3 = Color3.fromRGB(255, 105, 180)
-    box.Transparency = 0.5
-    box.Size = Vector3.new(4, 6, 4)
-    box.Parent = espFolder
-    
-    -- Name Display
-    local nameBillboard = Instance.new("BillboardGui")
-    nameBillboard.Adornee = nil
-    nameBillboard.Size = UDim2.new(0, 100, 0, 40)
-    nameBillboard.AlwaysOnTop = true
-    nameBillboard.Parent = espFolder
-    
-    local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size = UDim2.new(1, 0, 1, 0)
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.TextColor3 = Color3.fromRGB(255, 105, 180)
-    nameLabel.Font = Enum.Font.GothamBold
-    nameLabel.TextSize = 20
-    nameLabel.TextStrokeTransparency = 0
-    nameLabel.Text = targetPlayer.Name
-    nameLabel.Parent = nameBillboard
-    
-    espBoxes[targetPlayer] = {
-        box = box,
-        nameGui = nameBillboard,
-        nameLabel = nameLabel
-    }
-end
-
-local function removeESPForPlayer(targetPlayer)
-    if espBoxes[targetPlayer] then
-        espBoxes[targetPlayer].box:Destroy()
-        espBoxes[targetPlayer].nameGui:Destroy()
-        espBoxes[targetPlayer] = nil
+local espToggle = createToggleButton(visualPage, UDim2.new(0, 20, 0, 20), function(enabled)
+    if enabled then
+        startESP()
+    else
+        stopESP()
     end
-end
+end)
 
--- ESP Update Loop
-RunService.Heartbeat:Connect(function()
-    if playerESPEnabled then
-        for _, targetPlayer in pairs(Players:GetPlayers()) do
-            if targetPlayer ~= player and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                createESPForPlayer(targetPlayer)
-                local esp = espBoxes[targetPlayer]
-                esp.box.Adornee = targetPlayer.Character.HumanoidRootPart
-                esp.nameGui.Adornee = targetPlayer.Character.HumanoidRootPart
-                -- Durch Wände sehen, also AlwaysOnTop true - ist gesetzt
-            else
-                removeESPForPlayer(targetPlayer)
+local espLabel = createTextLabel({
+    Parent = visualPage,
+    Position = UDim2.new(0, 50, 0, 20),
+    Size = UDim2.new(0, 150, 0, 30),
+    BackgroundTransparency = 1,
+    Text = "Player ESP",
+    TextColor3 = Color3.fromRGB(255, 105, 180),
+    Font = Enum.Font.Gotham,
+    TextSize = 22,
+    TextXAlignment = Enum.TextXAlignment.Left,
+})
+
+-- Farbauswahl Label
+local colorLabel = createTextLabel({
+    Parent = visualPage,
+    Position = UDim2.new(0, 20, 0, 60),
+    Size = UDim2.new(0, 100, 0, 25),
+    BackgroundTransparency = 1,
+    Text = "ESP Color:",
+    TextColor3 = Color3.fromRGB(255, 105, 180),
+    Font = Enum.Font.Gotham,
+    TextSize = 20,
+    TextXAlignment = Enum.TextXAlignment.Left,
+})
+
+-- Farbwahl Buttons (Rot, Pink, Grün, Blau)
+local function createColorButton(color, pos)
+    local btn = Instance.new("TextButton")
+    btn.Parent = visualPage
+    btn.Size = UDim2.new(0, 30, 0, 25)
+    btn.Position = pos
+    btn.BackgroundColor3 = color
+    btn.BorderSizePixel = 0
+    btn.Text = ""
+    createUICorner(btn, UDim.new(0, 5))
+    btn.MouseButton1Click:Connect(function()
+        espColor = color
+        -- Update alle aktiven ESP Namensfarben
+        for _, esp in pairs(espConnections) do
+            if esp and esp:FindFirstChildWhichIsA("TextLabel") then
+                esp:FindFirstChildWhichIsA("TextLabel").TextColor3 = espColor
             end
         end
-    else
-        -- Alle ESP entfernen
-        for plr, _ in pairs(espBoxes) do
-            removeESPForPlayer(plr)
-        end
-    end
-end)
-
--- LOCK ESP (Timer Anzeige)
-
-local lockESPLabels = {}
-
-local function createLockESPForBase(basePart)
-    if lockESPLabels[basePart] then return end
-    local billboard = Instance.new("BillboardGui")
-    billboard.Size = UDim2.new(0, 100, 0, 40)
-    billboard.AlwaysOnTop = true
-    billboard.Adornee = basePart
-    billboard.Parent = espFolder
-    
-    local timerLabel = Instance.new("TextLabel")
-    timerLabel.Size = UDim2.new(1, 0, 1, 0)
-    timerLabel.BackgroundTransparency = 1
-    timerLabel.TextColor3 = Color3.fromRGB(255, 105, 180)
-    timerLabel.Font = Enum.Font.GothamBold
-    timerLabel.TextSize = 20
-    timerLabel.TextStrokeTransparency = 0
-    timerLabel.Text = "Lock: 00:00"
-    timerLabel.Parent = billboard
-    
-    lockESPLabels[basePart] = {
-        gui = billboard,
-        label = timerLabel,
-        endTime = tick() + 30 -- Beispiel: 30 Sek Timer
-    }
-end
-
-local function removeLockESP(basePart)
-    if lockESPLabels[basePart] then
-        lockESPLabels[basePart].gui:Destroy()
-        lockESPLabels[basePart] = nil
-    end
-end
-
--- Beispiel-Bases für Lock ESP (hier anpassen)
-local baseParts = {} -- Füge deine Base Parts hier ein
-
--- Update Lock Timer
-RunService.Heartbeat:Connect(function()
-    if lockESPEnabled then
-        for _, base in pairs(baseParts) do
-            createLockESPForBase(base)
-            local info = lockESPLabels[base]
-            local remaining = math.max(0, math.floor(info.endTime - tick()))
-            local minutes = math.floor(remaining / 60)
-            local seconds = remaining % 60
-            info.label.Text = string.format("Lock: %02d:%02d", minutes, seconds)
-        end
-    else
-        for base, _ in pairs(lockESPLabels) do
-            removeLockESP(base)
-        end
-    end
-end)
-
--- AUTO HIT
-
-local autoHitConn
-
-local function startAutoHit()
-    if autoHitConn then return end
-    autoHitConn = RunService.Heartbeat:Connect(function()
-        -- Simuliere Schlagen: 
-        -- Hier anpassen für dein Spiel, z.B. RemoteEvent Fire oder Tasten-Simulation
-        local humanoid = character:FindFirstChild("Humanoid")
-        if humanoid and humanoid.Health > 0 then
-            -- Beispiel: Humanoid:TakeDamage(5) oder ein Angriff auslösen
-            -- Ohne genaue Spiel-API schwer, hier ein Platzhalter
-            -- print("Auto Hit tick")
-        end
     end)
+    return btn
 end
 
-local function stopAutoHit()
-    if autoHitConn then
-        autoHitConn:Disconnect()
-        autoHitConn = nil
-    end
-end
+createColorButton(Color3.fromRGB(255, 105, 180), UDim2.new(0, 130, 0, 60)) -- Pink
+createColorButton(Color3.fromRGB(255, 50, 50), UDim2.new(0, 170, 0, 60)) -- Rot
+createColorButton(Color3.fromRGB(50, 255, 50), UDim2.new(0, 210, 0, 60)) -- Grün
+createColorButton(Color3.fromRGB(50, 100, 255), UDim2.new(0, 250, 0, 60)) -- Blau
 
--- MOVEMENT (Speed & Super Jump)
+-- PAGE: Misc (Beispiel)
+local miscPage = createFrame({
+    Parent = contentFrame,
+    Size = UDim2.new(1, 0, 1, 0),
+    BackgroundTransparency = 1,
+    Visible = false,
+})
+pages["Misc"] = miscPage
 
-local normalWalkSpeed = 16
-local normalJumpPower = 50
+local autoHitToggle = createToggleButton(miscPage, UDim2.new(0, 20, 0, 20), function(enabled)
+    -- Auto Hit Funktion hier (Platzhalter)
+end)
+local autoHitLabel = createTextLabel({
+    Parent = miscPage,
+    Position = UDim2.new(0, 50, 0, 20),
+    Size = UDim2.new(0, 150, 0, 30),
+    BackgroundTransparency = 1,
+    Text = "Auto Hit",
+    TextColor3 = Color3.fromRGB(255, 105, 180),
+    Font = Enum.Font.Gotham,
+    TextSize = 22,
+    TextXAlignment = Enum.TextXAlignment.Left,
+})
 
-local function setSpeed(enabled)
+-- PAGE: Movement (Beispiel)
+local movementPage = createFrame({
+    Parent = contentFrame,
+    Size = UDim2.new(1, 0, 1, 0),
+    BackgroundTransparency = 1,
+    Visible = false,
+})
+pages["Movement"] = movementPage
+
+local speedToggle = createToggleButton(movementPage, UDim2.new(0, 20, 0, 20), function(enabled)
     if enabled then
-        humanoid.WalkSpeed = 30
+        humanoid.WalkSpeed = 40
     else
-        humanoid.WalkSpeed = normalWalkSpeed
+        humanoid.WalkSpeed = 16
     end
-end
+end)
+local speedLabel = createTextLabel({
+    Parent = movementPage,
+    Position = UDim2.new(0, 50, 0, 20),
+    Size = UDim2.new(0, 150, 0, 30),
+    BackgroundTransparency = 1,
+    Text = "Speed Hack",
+    TextColor3 = Color3.fromRGB(255, 105, 180),
+    Font = Enum.Font.Gotham,
+    TextSize = 22,
+    TextXAlignment = Enum.TextXAlignment.Left,
+})
 
-local function setSuperJump(enabled)
+local superJumpToggle = createToggleButton(movementPage, UDim2.new(0, 20, 0, 60), function(enabled)
     if enabled then
         humanoid.JumpPower = 100
     else
-        humanoid.JumpPower = normalJumpPower
+        humanoid.JumpPower = 50
+    end
+end)
+local superJumpLabel = createTextLabel({
+    Parent = movementPage,
+    Position = UDim2.new(0, 50, 0, 60),
+    Size = UDim2.new(0, 150, 0, 30),
+    BackgroundTransparency = 1,
+    Text = "Super Jump",
+    TextColor3 = Color3.fromRGB(255, 105, 180),
+    Font = Enum.Font.Gotham,
+    TextSize = 22,
+    TextXAlignment = Enum.TextXAlignment.Left,
+})
+
+-- ESP Funktionen
+
+local espConnections = {}
+
+local function startESP()
+    stopESP()
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local rootPart = p.Character.HumanoidRootPart
+            local nameTag = Instance.new("BillboardGui")
+            nameTag.Name = "VSKNameESP"
+            nameTag.Adornee = rootPart
+            nameTag.Size = UDim2.new(0, 100, 0, 40)
+            nameTag.StudsOffset = Vector3.new(0, 2, 0)
+            nameTag.AlwaysOnTop = true
+            nameTag.Parent = rootPart
+
+            local label = Instance.new("TextLabel")
+            label.BackgroundTransparency = 1
+            label.Size = UDim2.new(1, 0, 1, 0)
+            label.Text = p.Name
+            label.TextColor3 = espColor
+            label.TextStrokeTransparency = 0
+            label.Font = Enum.Font.GothamBold
+            label.TextScaled = true
+            label.Parent = nameTag
+
+            table.insert(espConnections, nameTag)
+        end
     end
 end
 
--- Bind Toggle Vars to Funktion
-
--- Visual
-local function setPlayerESP(state)
-    playerESPEnabled = state
-end
-
-local function setLockESP(state)
-    lockESPEnabled = state
-end
-
--- Misc
-local function setAutoHit(state)
-    autoHitEnabled = state
-    if state then
-        startAutoHit()
-    else
-        stopAutoHit()
+local function stopESP()
+    for _, esp in pairs(espConnections) do
+        if esp then
+            esp:Destroy()
+        end
     end
+    espConnections = {}
 end
 
--- Movement
-local function setSpeedEnabled(state)
-    speedEnabled = state
-    setSpeed(state)
-end
+-- MINIMIZE / RESTORE BUTTON
 
-local function setSuperJumpEnabled(state)
-    superJumpEnabled = state
-    setSuperJump(state)
-end
+local minimized = false
 
--- Login Button Click
+-- Minimized Icon (kleines Quadrat)
+local minimizeIcon = createFrame({
+    Parent = MenuGui,
+    Size = UDim2.new(0, 40, 0, 40),
+    Position = UDim2.new(0, 20, 0.5, -20),
+    BackgroundColor3 = Color3.fromRGB(255, 105, 180),
+    BorderSizePixel = 0,
+    Visible = false,
+})
+createUICorner(minimizeIcon, UDim.new(0, 6))
 
-submitBtn.MouseButton1Click:Connect(function()
-    local key = keyBox.Text:upper()
-    if isValidKey(key) then
-        errorLabel.Text = ""
-        keyBox.Text = ""
-        keyFrame.Visible = false
-        loadingFrame.Visible = true
-        runLoading()
-        wait(0.5)
-        KeyGui.Enabled = false
-        MenuGui.Enabled = true
-    else
-        errorLabel.Text = "Invalid Key! Format: VSK-XXXXXX"
+local miniLabel = createTextLabel({
+    Parent = minimizeIcon,
+    Size = UDim2.new(1, 0, 1, 0),
+    BackgroundTransparency = 1,
+    Text = "VSK",
+    TextColor3 = Color3.fromRGB(20, 20, 20),
+    Font = Enum.Font.GothamBold,
+    TextSize = 20,
+    TextScaled = false,
+    TextWrapped = false,
+    TextXAlignment = Enum.TextXAlignment.Center,
+    TextYAlignment = Enum.TextYAlignment.Center,
+})
+
+minimizeIcon.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        minimized = false
+        mainFrame.Visible = true
+        minimizeIcon.Visible = false
     end
 end)
 
--- Menü einblenden, wenn Login erfolgreich
--- Der Wechsel der Tabs setzt schon Toggle-Buttons.
+local minimizeButton = createButton({
+    Parent = mainFrame,
+    Size = UDim2.new(0, 35, 0, 35),
+    Position = UDim2.new(1, -40, 0, 10),
+    BackgroundColor3 = Color3.fromRGB(255, 105, 180),
+    Text = "—",
+    TextColor3 = Color3.fromRGB(20, 20, 20),
+    Font = Enum.Font.GothamBold,
+    TextSize = 30,
+    BorderSizePixel = 0,
+})
 
--- Tasten zum Öffnen/Schließen des Menüs (z.B. mit RightCtrl)
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.RightControl then
-        MenuGui.Enabled = not MenuGui.Enabled
+minimizeButton.MouseButton1Click:Connect(function()
+    minimized = true
+    mainFrame.Visible = false
+    minimizeIcon.Visible = true
+end)
+
+-- Auswahl der Startseite
+sidebarButtons["Home"].MouseButton1Click:Wait()
+
+-- KEY LOGIN Funktionalität
+
+submitBtn.MouseButton1Click:Connect(function()
+    local key = keyBox.Text
+    if not isValidKey(key) then
+        errorLabel.Text = "Invalid key format! Must be like VSK-XXXXXX"
+        return
+    end
+    errorLabel.Text = ""
+    keyFrame.Visible = false
+    loadingFrame.Visible = true
+    runLoading()
+    wait(0.5)
+    loadingFrame.Visible = false
+    MenuGui.Enabled = true
+    KeyGui.Enabled = false
+end)
+
+-- LOGIN ENTER KEY mit ENTER Taste
+keyBox.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        submitBtn:CaptureFocus()
+        submitBtn.MouseButton1Click:Wait()
     end
 end)
