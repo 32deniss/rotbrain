@@ -1,410 +1,570 @@
--- VSK BRAINROT V1 LUA MENU for ROBLOX
--- Blau/Schwarz Theme + Sidebar mit Icons + Speed + Super Jump + ESP + Misc
+-- VSK BRAINROT V3: Toggle Switches, viele Funktionen, Snaplines, ESP
 -- Created by @vskdeniss
 
 local Players = game:GetService("Players")
-local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 
--- Create ScreenGui
+-- Farben & Design
+local colors = {
+    dark = Color3.fromRGB(15, 15, 40),
+    sidebar = Color3.fromRGB(30, 30, 60),
+    highlight = Color3.fromRGB(100, 60, 190),
+    text = Color3.fromRGB(220, 220, 230),
+    buttonHover = Color3.fromRGB(80, 50, 150),
+    boxPurple = Color3.fromRGB(140, 90, 220),
+    switchOff = Color3.fromRGB(120, 120, 130),
+    switchOn = Color3.fromRGB(140, 90, 220),
+}
+
+-- Hilfsfunktion: Toggle Switch (kleiner Button rechts)
+local function createToggleSwitch(parent, posY)
+    local switch = Instance.new("TextButton", parent)
+    switch.Size = UDim2.new(0, 40, 0, 25)
+    switch.Position = UDim2.new(1, -50, 0, posY + 5)
+    switch.BackgroundColor3 = colors.switchOff
+    switch.Text = ""
+    switch.AutoButtonColor = false
+    switch.Name = "ToggleSwitch"
+    switch.ClipsDescendants = true
+
+    local uicorner = Instance.new("UICorner", switch)
+    uicorner.CornerRadius = UDim.new(0, 12)
+
+    local circle = Instance.new("Frame", switch)
+    circle.Name = "Circle"
+    circle.Size = UDim2.new(0, 20, 0, 20)
+    circle.Position = UDim2.new(0, 3, 0, 3)
+    circle.BackgroundColor3 = Color3.new(1,1,1)
+    circle.ClipsDescendants = true
+
+    local circleCorner = Instance.new("UICorner", circle)
+    circleCorner.CornerRadius = UDim.new(1, 0)
+
+    local toggled = false
+
+    local function updateSwitch()
+        if toggled then
+            switch.BackgroundColor3 = colors.switchOn
+            circle:TweenPosition(UDim2.new(1, -23, 0, 3), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
+        else
+            switch.BackgroundColor3 = colors.switchOff
+            circle:TweenPosition(UDim2.new(0, 3, 0, 3), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
+        end
+    end
+
+    switch.MouseButton1Click:Connect(function()
+        toggled = not toggled
+        updateSwitch()
+        if switch.OnToggle then
+            switch.OnToggle(toggled)
+        end
+    end)
+
+    updateSwitch()
+
+    return switch, function() return toggled end, function(state)
+        toggled = state
+        updateSwitch()
+    end
+end
+
+-- Haupt GUI
 local gui = Instance.new("ScreenGui")
-gui.Name = "VSK_BRAINROT_V1"
+gui.Name = "VSK_BRAINROT_V3"
 gui.ResetOnSpawn = false
 gui.Parent = game.CoreGui
 
--- Main Frame
 local mainFrame = Instance.new("Frame", gui)
-mainFrame.Size = UDim2.new(0, 350, 0, 400)
-mainFrame.Position = UDim2.new(0.5, -175, 0.5, -200)
-mainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 26)
+mainFrame.Size = UDim2.new(0, 300, 0, 380)
+mainFrame.Position = UDim2.new(0.5, -150, 0.5, -190)
+mainFrame.BackgroundColor3 = colors.dark
 mainFrame.BorderSizePixel = 0
 mainFrame.Active = true
 mainFrame.Draggable = true
+mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 mainFrame.ClipsDescendants = true
+local mainCorner = Instance.new("UICorner", mainFrame)
+mainCorner.CornerRadius = UDim.new(0, 14)
 
--- UI Colors
-local blue = Color3.fromRGB(0, 122, 255)
-local darkBlue = Color3.fromRGB(0, 31, 63)
-local lightBlue = Color3.fromRGB(102, 204, 255)
-local white = Color3.new(1,1,1)
-
--- Sidebar Frame
 local sidebar = Instance.new("Frame", mainFrame)
-sidebar.Size = UDim2.new(0, 100, 1, 0)
+sidebar.Size = UDim2.new(0, 90, 1, 0)
 sidebar.Position = UDim2.new(0, 0, 0, 0)
-sidebar.BackgroundColor3 = darkBlue
+sidebar.BackgroundColor3 = colors.sidebar
+local sideCorner = Instance.new("UICorner", sidebar)
+sideCorner.CornerRadius = UDim.new(0, 14)
 
--- Sidebar Buttons Container
-local sidebarButtons = {}
-
--- Content Frame (für Tabs)
 local contentFrame = Instance.new("Frame", mainFrame)
-contentFrame.Size = UDim2.new(1, -100, 1, 0)
-contentFrame.Position = UDim2.new(0, 100, 0, 0)
-contentFrame.BackgroundColor3 = Color3.fromRGB(15,15,40)
+contentFrame.Size = UDim2.new(1, -90, 1, 0)
+contentFrame.Position = UDim2.new(0, 90, 0, 0)
+contentFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 60)
 contentFrame.BorderSizePixel = 0
+local contentCorner = Instance.new("UICorner", contentFrame)
+contentCorner.CornerRadius = UDim.new(0, 14)
 
--- Function: createSidebarButton
-local function createSidebarButton(text, iconText)
+-- Sidebar Buttons
+local sidebarItems = {
+    {name = "Home", icon = "🏠"},
+    {name = "Visual", icon = "👁️"},
+    {name = "Misc", icon = "⚙️"},
+}
+
+local sidebarButtons = {}
+local tabs = {}
+
+local function createSidebarButton(text, icon)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, 0, 0, 50)
-    btn.BackgroundColor3 = darkBlue
+    btn.BackgroundColor3 = colors.sidebar
     btn.BorderSizePixel = 0
-    btn.Text = iconText.."  "..text
-    btn.TextColor3 = lightBlue
-    btn.Font = Enum.Font.SourceSansBold
-    btn.TextSize = 20
+    btn.Text = icon.."  "..text
+    btn.TextColor3 = colors.text
+    btn.Font = Enum.Font.GothamSemibold
+    btn.TextSize = 16
     btn.TextXAlignment = Enum.TextXAlignment.Left
     btn.AutoButtonColor = false
 
+    local uicorner = Instance.new("UICorner", btn)
+    uicorner.CornerRadius = UDim.new(0, 10)
+
     btn.MouseEnter:Connect(function()
-        btn.BackgroundColor3 = blue
-        btn.TextColor3 = white
+        btn.BackgroundColor3 = colors.buttonHover
     end)
     btn.MouseLeave:Connect(function()
-        btn.BackgroundColor3 = darkBlue
-        btn.TextColor3 = lightBlue
+        btn.BackgroundColor3 = colors.sidebar
     end)
+
     return btn
 end
 
--- Tabs
-local tabs = {}
-
--- Funktion um Tabs zu erstellen
 local function createTab(name)
     local frame = Instance.new("ScrollingFrame", contentFrame)
     frame.Name = name
     frame.Size = UDim2.new(1, 0, 1, 0)
     frame.BackgroundTransparency = 1
     frame.CanvasSize = UDim2.new(0, 0, 0, 0)
-    frame.ScrollBarThickness = 6
+    frame.ScrollBarThickness = 5
     frame.Visible = false
 
-    -- Layout für Buttons
     local layout = Instance.new("UIListLayout", frame)
-    layout.Padding = UDim.new(0,10)
+    layout.Padding = UDim.new(0, 8)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     layout.VerticalAlignment = Enum.VerticalAlignment.Top
 
-    -- Automatische CanvasSize-Anpassung
     layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        frame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
+        frame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 15)
     end)
 
     tabs[name] = frame
     return frame
 end
 
--- Create Sidebar Buttons & Tabs
-local sidebarNames = {
-    {name = "Home", icon = "🏠"},
-    {name = "Visual", icon = "👁️"},
-    {name = "Misc", icon = "⚙️"},
-}
-
-for i, tabInfo in ipairs(sidebarNames) do
-    local btn = createSidebarButton(tabInfo.name, tabInfo.icon)
-    btn.Position = UDim2.new(0, 0, 0, (i-1)*50)
+for i, item in ipairs(sidebarItems) do
+    local btn = createSidebarButton(item.name, item.icon)
+    btn.Position = UDim2.new(0, 0, 0, (i-1)*55)
     btn.Parent = sidebar
-    sidebarButtons[tabInfo.name] = btn
-    createTab(tabInfo.name)
+    sidebarButtons[item.name] = btn
+    createTab(item.name)
 end
 
--- Show Tab Funktion
 local currentTab = nil
 local function showTab(name)
     if currentTab then
         tabs[currentTab].Visible = false
-        sidebarButtons[currentTab].BackgroundColor3 = darkBlue
-        sidebarButtons[currentTab].TextColor3 = lightBlue
+        sidebarButtons[currentTab].BackgroundColor3 = colors.sidebar
+        sidebarButtons[currentTab].TextColor3 = colors.text
     end
     currentTab = name
     tabs[name].Visible = true
-    sidebarButtons[name].BackgroundColor3 = blue
-    sidebarButtons[name].TextColor3 = white
+    sidebarButtons[name].BackgroundColor3 = colors.highlight
+    sidebarButtons[name].TextColor3 = Color3.new(1,1,1)
 end
 
--- Sidebar Button Click Verbindung
 for name, btn in pairs(sidebarButtons) do
     btn.MouseButton1Click:Connect(function()
         showTab(name)
     end)
 end
 
--- Starte mit Home Tab
 showTab("Home")
 
--- *** Home Tab Content ***
+-- Home Tab
 do
     local frame = tabs["Home"]
-    local title = Instance.new("TextLabel", frame)
-    title.Text = "VSK BRAINROT V1"
-    title.Font = Enum.Font.SourceSansBold
-    title.TextSize = 30
-    title.TextColor3 = lightBlue
-    title.BackgroundTransparency = 1
-    title.Size = UDim2.new(1, 0, 0, 40)
-    title.TextStrokeColor3 = Color3.new(0,0,0)
-    title.TextStrokeTransparency = 0.7
-    title.TextYAlignment = Enum.TextYAlignment.Top
-    title.Position = UDim2.new(0, 0, 0, 10)
 
-    local desc = Instance.new("TextLabel", frame)
-    desc.Text = "Advanced cheat menu for Steal a Brainrot.\n\nCreated by @vskdeniss\n\nFeatures:\n- Speed Hack\n- Super Jump\n- ESP with player names\n- Misc options"
-    desc.Font = Enum.Font.SourceSans
-    desc.TextSize = 18
-    desc.TextColor3 = white
-    desc.BackgroundTransparency = 1
-    desc.Size = UDim2.new(1, -20, 0, 150)
-    desc.Position = UDim2.new(0, 10, 0, 60)
-    desc.TextWrapped = true
+    local title = Instance.new("TextLabel", frame)
+    title.Text = "VSK BRAINROT V3"
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 24
+    title.TextColor3 = colors.highlight
+    title.BackgroundTransparency = 1
+    title.Size = UDim2.new(1, -20, 0, 40)
+    title.Position = UDim2.new(0, 10, 0, 10)
+
+    local info = Instance.new("TextLabel", frame)
+    info.Text = [[
+- ESP mit Snaplines
+- Speed & Jump Hacks
+- Invisibility, No Clip
+- Auto Collect Brainrot Items
+- Auto Heal bei wenig HP
+- Toggle Switches neben jeder Funktion
+    ]]
+    info.Font = Enum.Font.Gotham
+    info.TextSize = 14
+    info.TextColor3 = colors.text
+    info.BackgroundTransparency = 1
+    info.Size = UDim2.new(1, -20, 0, 120)
+    info.Position = UDim2.new(0, 10, 0, 60)
+    info.TextWrapped = true
+
+    local creatorLabel = Instance.new("TextLabel", frame)
+    creatorLabel.Text = "created by @vskdeniss"
+    creatorLabel.Font = Enum.Font.GothamItalic
+    creatorLabel.TextSize = 12
+    creatorLabel.TextColor3 = colors.highlight
+    creatorLabel.BackgroundTransparency = 1
+    creatorLabel.Size = UDim2.new(1, -20, 0, 20)
+    creatorLabel.Position = UDim2.new(0, 10, 1, -30)
 end
 
--- *** Visual Tab Content ***
+-- Visual Tab
 do
     local frame = tabs["Visual"]
 
-    -- ESP toggle
     local espEnabled = false
-    local espToggle = Instance.new("TextButton", frame)
-    espToggle.Size = UDim2.new(0.8, 0, 0, 40)
-    espToggle.BackgroundColor3 = darkBlue
-    espToggle.TextColor3 = white
-    espToggle.Font = Enum.Font.SourceSansBold
-    espToggle.TextSize = 22
-    espToggle.Text = "Toggle Player ESP"
-    espToggle.AutoButtonColor = false
-    espToggle.AnchorPoint = Vector2.new(0.5, 0)
-    espToggle.Position = UDim2.new(0.5, 0, 0, 20)
+    local snaplinesEnabled = false
+    local distanceEnabled = false
 
-    espToggle.MouseEnter:Connect(function()
-        espToggle.BackgroundColor3 = blue
-    end)
-    espToggle.MouseLeave:Connect(function()
-        espToggle.BackgroundColor3 = darkBlue
-    end)
-
-    -- Funktion: ESP zeichnen
     local espBoxes = {}
+    local snaplines = {}
 
-    local function createEspBox(player)
-        if espBoxes[player] then return end
-        local box = Instance.new("BillboardGui")
-        box.Name = "ESP_Box"
-        box.Adornee = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-        box.Size = UDim2.new(0, 100, 0, 40)
-        box.StudsOffset = Vector3.new(0, 2, 0)
-        box.AlwaysOnTop = true
+    local function makeRound(frame, radius)
+        local c = Instance.new("UICorner", frame)
+        c.CornerRadius = radius
+        return c
+    end
+
+    local function createPlayerBox(plr)
+        if espBoxes[plr] then return end
+        local box = Instance.new("Frame")
+        box.Name = "ESPBox"
+        box.BackgroundColor3 = colors.boxPurple
+        box.BorderSizePixel = 0
+        box.Size = UDim2.new(0, 100, 0, 25)
+        box.AnchorPoint = Vector2.new(0.5, 0.5)
+        box.ClipsDescendants = true
 
         local label = Instance.new("TextLabel", box)
-        label.Size = UDim2.new(1, 0, 1, 0)
+        label.Name = "NameLabel"
+        label.TextColor3 = Color3.new(1, 1, 1)
+        label.Font = Enum.Font.GothamBold
+        label.TextSize = 16
         label.BackgroundTransparency = 1
-        label.TextColor3 = Color3.new(1, 0, 0) -- Rot
-        label.TextStrokeColor3 = Color3.new(0,0,0)
-        label.TextStrokeTransparency = 0.5
-        label.Font = Enum.Font.SourceSansBold
-        label.TextScaled = true
-        label.Text = player.Name
+        label.Size = UDim2.new(1, -10, 1, 0)
+        label.Position = UDim2.new(0, 5, 0, 0)
+        label.TextXAlignment = Enum.TextXAlignment.Left
 
-        box.Parent = game.CoreGui
-        espBoxes[player] = box
+        makeRound(box, UDim.new(0, 6))
+
+        box.Parent = frame
+        espBoxes[plr] = box
     end
 
-    local function removeEspBox(player)
-        if espBoxes[player] then
-            espBoxes[player]:Destroy()
-            espBoxes[player] = nil
+    local function removePlayerBox(plr)
+        if espBoxes[plr] then
+            espBoxes[plr]:Destroy()
+            espBoxes[plr] = nil
         end
     end
 
-    local function updateEsp()
-        if not espEnabled then return end
-        for _, plr in pairs(Players:GetPlayers()) do
-            if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                if not espBoxes[plr] then
-                    createEspBox(plr)
+    local function updateBoxes()
+        for plr, box in pairs(espBoxes) do
+            local char = plr.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if char and hrp and plr.Team ~= player.Team then
+                local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(hrp.Position)
+                if onScreen then
+                    box.Visible = true
+                    box.Position = UDim2.new(0, pos.X - box.Size.X.Offset/2, 0, pos.Y - box.Size.Y.Offset/2)
+                    box.NameLabel.Text = plr.Name
+
+                    if distanceEnabled then
+                        local dist = (player.Character.HumanoidRootPart.Position - hrp.Position).Magnitude
+                        box.NameLabel.Text = plr.Name .. string.format(" (%.0f)", dist)
+                    end
+                else
+                    box.Visible = false
                 end
             else
-                removeEspBox(plr)
+                box.Visible = false
             end
         end
     end
 
-    espToggle.MouseButton1Click:Connect(function()
-        espEnabled = not espEnabled
-        if espEnabled then
-            espToggle.Text = "Disable Player ESP"
-            updateEsp()
-        else
-            espToggle.Text = "Enable Player ESP"
-            for _, box in pairs(espBoxes) do
-                box:Destroy()
+    local function createSnapline(plr)
+        if snaplines[plr] then return end
+        local line = Drawing.new("Line")
+        line.Color = colors.boxPurple
+        line.Thickness = 1.5
+        line.Transparency = 0.8
+        snaplines[plr] = line
+    end
+
+    local function removeSnapline(plr)
+        if snaplines[plr] then
+            snaplines[plr]:Remove()
+            snaplines[plr] = nil
+        end
+    end
+
+    local function updateSnaplines()
+        local camera = workspace.CurrentCamera
+        local centerX = camera.ViewportSize.X / 2
+        local centerY = camera.ViewportSize.Y
+
+        for plr, line in pairs(snaplines) do
+            local char = plr.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if char and hrp and plr.Team ~= player.Team then
+                local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
+                if onScreen then
+                    line.From = Vector2.new(centerX, centerY)
+                    line.To = Vector2.new(pos.X, pos.Y)
+                    line.Visible = true
+                else
+                    line.Visible = false
+                end
+            else
+                line.Visible = false
             end
-            espBoxes = {}
+        end
+    end
+
+    local function updateVisual()
+        updateBoxes()
+        updateSnaplines()
+    end
+
+    -- Toggle Buttons mit Switch rechts
+    local toggleY = 10
+    local function addToggleOption(text, onToggle)
+        local label = Instance.new("TextLabel", frame)
+        label.Size = UDim2.new(0.8, -50, 0, 30)
+        label.Position = UDim2.new(0, 10, 0, toggleY)
+        label.BackgroundTransparency = 1
+        label.Font = Enum.Font.GothamSemibold
+        label.TextSize = 18
+        label.TextColor3 = colors.text
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Text = text
+
+        local switch, getState, setState = createToggleSwitch(frame, toggleY)
+
+        switch.OnToggle = function(state)
+            onToggle(state)
+        end
+
+        toggleY = toggleY + 45
+    end
+
+    addToggleOption("ESP", function(state)
+        espEnabled = state
+        if not state then
+            for plr, _ in pairs(espBoxes) do removePlayerBox(plr) end
+        else
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr ~= player then createPlayerBox(plr) end
+            end
         end
     end)
 
-    -- Update ESP regelmäßig
-    game:GetService("RunService").RenderStepped:Connect(function()
-        if espEnabled then
-            updateEsp()
+    addToggleOption("Snaplines", function(state)
+        snaplinesEnabled = state
+        if not state then
+            for plr, _ in pairs(snaplines) do removeSnapline(plr) end
+        else
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr ~= player then createSnapline(plr) end
+            end
         end
+    end)
+
+    addToggleOption("Entfernung anzeigen", function(state)
+        distanceEnabled = state
+    end)
+
+    -- Update Schleife für Visual Elemente
+    RunService.Heartbeat:Connect(function()
+        if espEnabled then updateBoxes() end
+        if snaplinesEnabled then updateSnaplines() end
+    end)
+
+    -- Spieler hinzufügen/entfernen Events
+    Players.PlayerAdded:Connect(function(plr)
+        if espEnabled then createPlayerBox(plr) end
+        if snaplinesEnabled then createSnapline(plr) end
+    end)
+    Players.PlayerRemoving:Connect(function(plr)
+        removePlayerBox(plr)
+        removeSnapline(plr)
     end)
 end
 
--- *** Misc Tab Content ***
+-- Misc Tab
 do
     local frame = tabs["Misc"]
 
-    -- Speed Toggle
+    local toggleY = 10
+
+    local function addToggleOption(text, onToggle)
+        local label = Instance.new("TextLabel", frame)
+        label.Size = UDim2.new(0.8, -50, 0, 30)
+        label.Position = UDim2.new(0, 10, 0, toggleY)
+        label.BackgroundTransparency = 1
+        label.Font = Enum.Font.GothamSemibold
+        label.TextSize = 18
+        label.TextColor3 = colors.text
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Text = text
+
+        local switch, getState, setState = createToggleSwitch(frame, toggleY)
+
+        switch.OnToggle = function(state)
+            onToggle(state)
+        end
+
+        toggleY = toggleY + 45
+    end
+
     local speedEnabled = false
-    local speedBtn = Instance.new("TextButton", frame)
-    speedBtn.Size = UDim2.new(0.8, 0, 0, 40)
-    speedBtn.BackgroundColor3 = darkBlue
-    speedBtn.TextColor3 = white
-    speedBtn.Font = Enum.Font.SourceSansBold
-    speedBtn.TextSize = 22
-    speedBtn.Text = "Toggle Speed Hack"
-    speedBtn.AutoButtonColor = false
-    speedBtn.AnchorPoint = Vector2.new(0.5, 0)
-    speedBtn.Position = UDim2.new(0.5, 0, 0, 20)
-
-    speedBtn.MouseEnter:Connect(function()
-        speedBtn.BackgroundColor3 = blue
-    end)
-    speedBtn.MouseLeave:Connect(function()
-        speedBtn.BackgroundColor3 = darkBlue
-    end)
-
-    speedBtn.MouseButton1Click:Connect(function()
-        speedEnabled = not speedEnabled
-        if speedEnabled then
-            humanoid.WalkSpeed = 100
-            speedBtn.Text = "Disable Speed Hack"
-            StarterGui:SetCore("SendNotification", {
-                Title = "VSK BRAINROT V1",
-                Text = "Speed Hack Enabled",
-                Duration = 3,
-                Icon = "rbxassetid://6031071050"
-            })
-        else
-            humanoid.WalkSpeed = 16
-            speedBtn.Text = "Enable Speed Hack"
-            StarterGui:SetCore("SendNotification", {
-                Title = "VSK BRAINROT V1",
-                Text = "Speed Hack Disabled",
-                Duration = 3,
-                Icon = "rbxassetid://6031071050"
-            })
-        end
-    end)
-
-    -- Super Jump Toggle
     local jumpEnabled = false
-    local jumpBtn = Instance.new("TextButton", frame)
-    jumpBtn.Size = UDim2.new(0.8, 0, 0, 40)
-    jumpBtn.BackgroundColor3 = darkBlue
-    jumpBtn.TextColor3 = white
-    jumpBtn.Font = Enum.Font.SourceSansBold
-    jumpBtn.TextSize = 22
-    jumpBtn.Text = "Toggle Super Jump"
-    jumpBtn.AutoButtonColor = false
-    jumpBtn.AnchorPoint = Vector2.new(0.5, 0)
-    jumpBtn.Position = UDim2.new(0.5, 0, 0, 80)
+    local invisEnabled = false
+    local noclipEnabled = false
+    local autoCollectEnabled = false
+    local autoHealEnabled = false
 
-    jumpBtn.MouseEnter:Connect(function()
-        jumpBtn.BackgroundColor3 = blue
-    end)
-    jumpBtn.MouseLeave:Connect(function()
-        jumpBtn.BackgroundColor3 = darkBlue
+    addToggleOption("Speed Hack", function(state)
+        speedEnabled = state
+        if state then humanoid.WalkSpeed = 30 else humanoid.WalkSpeed = 16 end
     end)
 
-    jumpBtn.MouseButton1Click:Connect(function()
-        jumpEnabled = not jumpEnabled
-        if jumpEnabled then
-            humanoid.JumpPower = 150
-            jumpBtn.Text = "Disable Super Jump"
-            StarterGui:SetCore("SendNotification", {
-                Title = "VSK BRAINROT V1",
-                Text = "Super Jump Enabled",
-                Duration = 3,
-                Icon = "rbxassetid://6031071050"
-            })
-        else
-            humanoid.JumpPower = 50
-            jumpBtn.Text = "Enable Super Jump"
-            StarterGui:SetCore("SendNotification", {
-                Title = "VSK BRAINROT V1",
-                Text = "Super Jump Disabled",
-                Duration = 3,
-                Icon = "rbxassetid://6031071050"
-            })
+    addToggleOption("Super Jump", function(state)
+        jumpEnabled = state
+        if state then humanoid.JumpPower = 150 else humanoid.JumpPower = 50 end
+    end)
+
+    addToggleOption("Unsichtbarkeit", function(state)
+        invisEnabled = state
+        for _, part in pairs(character:GetChildren()) do
+            if part:IsA("BasePart") then
+                part.Transparency = state and 0.8 or 0
+            end
         end
     end)
 
-    -- Invisibility Toggle
-    local invisEnabled = false
-    local invisBtn = Instance.new("TextButton", frame)
-    invisBtn.Size = UDim2.new(0.8, 0, 0, 40)
-    invisBtn.BackgroundColor3 = darkBlue
-    invisBtn.TextColor3 = white
-    invisBtn.Font = Enum.Font.SourceSansBold
-    invisBtn.TextSize = 22
-    invisBtn.Text = "Toggle Invisibility"
-    invisBtn.AutoButtonColor = false
-    invisBtn.AnchorPoint = Vector2.new(0.5, 0)
-    invisBtn.Position = UDim2.new(0.5, 0, 0, 140)
-
-    invisBtn.MouseEnter:Connect(function()
-        invisBtn.BackgroundColor3 = blue
-    end)
-    invisBtn.MouseLeave:Connect(function()
-        invisBtn.BackgroundColor3 = darkBlue
+    addToggleOption("No Clip", function(state)
+        noclipEnabled = state
     end)
 
-    invisBtn.MouseButton1Click:Connect(function()
-        invisEnabled = not invisEnabled
-        if invisEnabled then
+    addToggleOption("Auto Collect Brainrot", function(state)
+        autoCollectEnabled = state
+    end)
+
+    addToggleOption("Auto Heal", function(state)
+        autoHealEnabled = state
+    end)
+
+    -- No Clip Loop
+    RunService.Stepped:Connect(function()
+        if noclipEnabled then
             for _, part in pairs(character:GetChildren()) do
                 if part:IsA("BasePart") then
-                    part.Transparency = 0.8
+                    part.CanCollide = false
                 end
             end
-            invisBtn.Text = "Disable Invisibility"
-            StarterGui:SetCore("SendNotification", {
-                Title = "VSK BRAINROT V1",
-                Text = "Invisibility Enabled",
-                Duration = 3,
-                Icon = "rbxassetid://6031071050"
-            })
         else
             for _, part in pairs(character:GetChildren()) do
                 if part:IsA("BasePart") then
-                    part.Transparency = 0
+                    part.CanCollide = true
                 end
             end
-            invisBtn.Text = "Enable Invisibility"
-            StarterGui:SetCore("SendNotification", {
-                Title = "VSK BRAINROT V1",
-                Text = "Invisibility Disabled",
-                Duration = 3,
-                Icon = "rbxassetid://6031071050"
-            })
+        end
+    end)
+
+    -- Auto Collect Brainrot
+    RunService.Heartbeat:Connect(function()
+        if autoCollectEnabled then
+            for _, item in pairs(workspace:GetChildren()) do
+                if item.Name == "Brainrot" and item:IsA("BasePart") then
+                    local dist = (character.HumanoidRootPart.Position - item.Position).Magnitude
+                    if dist < 20 then
+                        item.CFrame = character.HumanoidRootPart.CFrame
+                    end
+                end
+            end
+        end
+    end)
+
+    -- Auto Heal (Beispiel: bei weniger als 50 HP heilt automatisch)
+    RunService.Heartbeat:Connect(function()
+        if autoHealEnabled then
+            if humanoid.Health < 50 then
+                humanoid.Health = humanoid.Health + 1
+            end
         end
     end)
 end
 
--- Toggle Menu mit RightShift
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if input.KeyCode == Enum.KeyCode.RightShift and not gameProcessed then
-        gui.Enabled = not gui.Enabled
-    end
-end)
+-- Best Brainrot Spieler auf Home Tab
+do
+    local homeFrame = tabs["Home"]
+    local bestLabel = Instance.new("TextLabel", homeFrame)
+    bestLabel.Size = UDim2.new(1, -20, 0, 40)
+    bestLabel.Position = UDim2.new(0, 10, 1, -60)
+    bestLabel.BackgroundTransparency = 0.5
+    bestLabel.BackgroundColor3 = colors.boxPurple
+    bestLabel.TextColor3 = Color3.new(1, 1, 1)
+    bestLabel.Font = Enum.Font.GothamBold
+    bestLabel.TextSize = 16
+    bestLabel.TextWrapped = true
+    makeRound(bestLabel, UDim.new(0, 10))
 
--- Menü anfangs sichtbar
-gui.Enabled = true
+    local function updateBestBrainrot()
+        local bestPlayer = nil
+        local bestScore = -math.huge
+
+        for _, plr in pairs(Players:GetPlayers()) do
+            local leaderstats = plr:FindFirstChild("leaderstats")
+            if leaderstats then
+                local brainrotScore = leaderstats:FindFirstChild("Brainrot")
+                if brainrotScore and brainrotScore.Value > bestScore then
+                    bestScore = brainrotScore.Value
+                    bestPlayer = plr
+                end
+            end
+        end
+
+        if bestPlayer then
+            bestLabel.Text = string.format("Top Brainrot Spieler:\n%s mit %d Brainrot", bestPlayer.Name, bestScore)
+        else
+            bestLabel.Text = "Top Brainrot Spieler:\nKeine Daten verfügbar"
+        end
+    end
+
+    updateBestBrainrot()
+
+    Players.PlayerAdded:Connect(updateBestBrainrot)
+    Players.PlayerRemoving:Connect(updateBestBrainrot)
+    -- Update jede 10 Sekunden
+    while true do
+        wait(10)
+        updateBestBrainrot()
+    end
+end
+
+-- Fertig!
