@@ -1,95 +1,148 @@
--- VSK BRAINROT V1 LUA MENU for ROBLOX
--- BLUE/BLACK Theme + Speed Hack + Super Jump + UI auto-open
+-- VSK BRAINROT V1 MENU for Roblox "Steal a Brainrot"
+-- loadstring(game:HttpGet("https://raw.githubusercontent.com/32deniss/rotbrain/refs/heads/main/rotbrainooo.lua"))()
 
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
-local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
 
--- UI Creation
-local gui = Instance.new("ScreenGui")
-gui.Name = "VSK_BRAINROT_V1"
-gui.ResetOnSpawn = false
-gui.Parent = game.CoreGui
-gui.Enabled = true -- Menü direkt sichtbar
+-- GUI
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+ScreenGui.Name = "VSK_BRAINROT_GUI"
 
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 300, 0, 200)
-frame.Position = UDim2.new(0.5, -150, 0.5, -100)
-frame.BackgroundColor3 = Color3.fromRGB(10, 10, 26)
-frame.BorderSizePixel = 0
-frame.Active = true
-frame.Draggable = true
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UDim2.new(0, 450, 0, 300)
+MainFrame.Position = UDim2.new(0.5, -225, 0.5, -150)
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 26)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
 
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, 0, 0, 30)
-title.Position = UDim2.new(0, 0, 0, 0)
-title.BackgroundTransparency = 1
-title.Text = "VSK BRAINROT V1"
-title.TextColor3 = Color3.fromRGB(102, 204, 255)
-title.Font = Enum.Font.SourceSansBold
-title.TextScaled = true
+local Sidebar = Instance.new("Frame", MainFrame)
+Sidebar.Size = UDim2.new(0, 120, 1, 0)
+Sidebar.Position = UDim2.new(0, 0, 0, 0)
+Sidebar.BackgroundColor3 = Color3.fromRGB(15, 15, 45)
 
--- Speed Button
-local speedBtn = Instance.new("TextButton", frame)
-speedBtn.Size = UDim2.new(0.9, 0, 0, 40)
-speedBtn.Position = UDim2.new(0.05, 0, 0, 40)
-speedBtn.BackgroundColor3 = Color3.fromRGB(0, 31, 63)
-speedBtn.TextColor3 = Color3.new(1, 1, 1)
-speedBtn.Font = Enum.Font.SourceSans
-speedBtn.Text = "Toggle Speed"
+local Title = Instance.new("TextLabel", Sidebar)
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.Text = "BRAINROT"
+Title.TextColor3 = Color3.fromRGB(102, 204, 255)
+Title.BackgroundTransparency = 1
+Title.TextScaled = true
 
--- Jump Button
-local jumpBtn = Instance.new("TextButton", frame)
-jumpBtn.Size = UDim2.new(0.9, 0, 0, 40)
-jumpBtn.Position = UDim2.new(0.05, 0, 0, 90)
-jumpBtn.BackgroundColor3 = Color3.fromRGB(0, 31, 63)
-jumpBtn.TextColor3 = Color3.new(1, 1, 1)
-jumpBtn.Font = Enum.Font.SourceSans
-jumpBtn.Text = "Toggle Super Jump"
+-- Tabs
+local tabs = {}
+local currentTab = nil
 
--- Notification function
-local function notify(text, color)
-    StarterGui:SetCore("SendNotification", {
-        Title = "VSK BRAINROT V1",
-        Text = text,
-        Duration = 3,
-        Icon = "rbxassetid://6031071050", -- Default gear icon
-        Button1 = "OK"
-    })
+local function createTab(name)
+    local tabBtn = Instance.new("TextButton", Sidebar)
+    tabBtn.Size = UDim2.new(1, 0, 0, 30)
+    tabBtn.BackgroundColor3 = Color3.fromRGB(0, 20, 50)
+    tabBtn.Text = name
+    tabBtn.TextColor3 = Color3.new(1,1,1)
+
+    local tabFrame = Instance.new("Frame", MainFrame)
+    tabFrame.Size = UDim2.new(1, -120, 1, 0)
+    tabFrame.Position = UDim2.new(0, 120, 0, 0)
+    tabFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
+    tabFrame.Visible = false
+
+    tabBtn.MouseButton1Click:Connect(function()
+        if currentTab then currentTab.Visible = false end
+        tabFrame.Visible = true
+        currentTab = tabFrame
+    end)
+
+    tabs[name] = tabFrame
 end
 
--- Speed logic
-local speedEnabled = false
-speedBtn.MouseButton1Click:Connect(function()
-    speedEnabled = not speedEnabled
-    if speedEnabled then
-        humanoid.WalkSpeed = 100
-        notify("Speed Activated", Color3.fromRGB(0, 200, 255))
-    else
-        humanoid.WalkSpeed = 16
-        notify("Speed Deactivated", Color3.fromRGB(255, 50, 50))
+createTab("Visual")
+createTab("Movement")
+createTab("Misc")
+
+-- Auto show first tab
+tabs["Visual"].Visible = true
+currentTab = tabs["Visual"]
+
+-- Add Buttons
+local function createButton(parent, text, callback)
+    local btn = Instance.new("TextButton", parent)
+    btn.Size = UDim2.new(0, 280, 0, 40)
+    btn.Position = UDim2.new(0, 20, 0, (#parent:GetChildren()-1)*45 + 10)
+    btn.BackgroundColor3 = Color3.fromRGB(0, 31, 63)
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Text = text
+    btn.TextScaled = true
+    btn.MouseButton1Click:Connect(callback)
+end
+
+-- Visual Tab
+createButton(tabs["Visual"], "ESP (Red Names)", function()
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            local billboard = Instance.new("BillboardGui", p.Character.Head)
+            billboard.Size = UDim2.new(0,100,0,40)
+            billboard.AlwaysOnTop = true
+            local nameLabel = Instance.new("TextLabel", billboard)
+            nameLabel.Size = UDim2.new(1, 0, 1, 0)
+            nameLabel.BackgroundTransparency = 1
+            nameLabel.Text = p.Name
+            nameLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+            nameLabel.TextScaled = true
+        end
     end
 end)
 
--- Jump logic
-local jumpEnabled = false
-jumpBtn.MouseButton1Click:Connect(function()
-    jumpEnabled = not jumpEnabled
-    if jumpEnabled then
-        humanoid.JumpPower = 150
-        notify("Super Jump Enabled", Color3.fromRGB(0, 200, 255))
-    else
-        humanoid.JumpPower = 50
-        notify("Super Jump Disabled", Color3.fromRGB(255, 50, 50))
+-- Movement Tab
+local speedOn = false
+createButton(tabs["Movement"], "Toggle Speed", function()
+    speedOn = not speedOn
+    Humanoid.WalkSpeed = speedOn and 100 or 16
+    StarterGui:SetCore("SendNotification", {
+        Title = "Speed",
+        Text = speedOn and "Speed ON" or "Speed OFF",
+        Duration = 2
+    })
+end)
+
+local jumpOn = false
+createButton(tabs["Movement"], "Toggle Super Jump", function()
+    jumpOn = not jumpOn
+    Humanoid.JumpPower = jumpOn and 150 or 50
+    StarterGui:SetCore("SendNotification", {
+        Title = "Jump",
+        Text = jumpOn and "Super Jump ON" or "Super Jump OFF",
+        Duration = 2
+    })
+end)
+
+-- Misc Tab
+createButton(tabs["Misc"], "Fly (F Key)", function()
+    loadstring(game:HttpGet("https://pastebin.com/raw/YWwFmj9p"))()
+end)
+
+createButton(tabs["Misc"], "Invisibility", function()
+    local head = LocalPlayer.Character:FindFirstChild("Head")
+    if head then
+        head.Transparency = 1
     end
 end)
 
--- Optional: RightShift toggles menu on/off
-local UIS = game:GetService("UserInputService")
-UIS.InputBegan:Connect(function(input, gameProcessed)
+-- Credit
+local credit = Instance.new("TextLabel", MainFrame)
+credit.Size = UDim2.new(0, 200, 0, 20)
+credit.Position = UDim2.new(1, -200, 1, -25)
+credit.BackgroundTransparency = 1
+credit.Text = "created by @vskdeniss"
+credit.TextColor3 = Color3.fromRGB(100, 100, 255)
+credit.TextScaled = true
+credit.Font = Enum.Font.Code
+
+-- UI toggle key
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.KeyCode == Enum.KeyCode.RightShift then
-        gui.Enabled = not gui.Enabled
+        ScreenGui.Enabled = not ScreenGui.Enabled
     end
 end)
