@@ -65,8 +65,8 @@ errorLabel.Parent = frame
 -- ************** MENU GUI ******************
 
 local menuFrame = Instance.new("Frame")
-menuFrame.Size = UDim2.new(0, 350, 0, 300)
-menuFrame.Position = UDim2.new(0.5, -175, 0.5, -150)
+menuFrame.Size = UDim2.new(0, 700, 0, 400)  -- Breiter und höher für mehr Platz
+menuFrame.Position = UDim2.new(0.5, -350, 0.5, -200)  -- Zentriert
 menuFrame.BackgroundColor3 = Color3.fromRGB(30, 0, 50)
 menuFrame.BorderSizePixel = 0
 menuFrame.Visible = false
@@ -81,6 +81,7 @@ uiStroke.Parent = menuFrame
 -- Sidebar
 local sidebar = Instance.new("Frame")
 sidebar.Size = UDim2.new(0, 100, 1, 0)
+sidebar.Position = UDim2.new(0, 0, 0, 0)
 sidebar.BackgroundColor3 = Color3.fromRGB(20, 0, 40)
 sidebar.Parent = menuFrame
 
@@ -93,20 +94,18 @@ local tabs = {"🏠 Home", "👁️ Visual", "🚶 Movement", "⚙️ Misc"}
 
 local selectedTab = nil
 
-local function clearContent()
-    for _, child in pairs(menuFrame:GetChildren()) do
-        if child.Name == "Content" then
-            child:Destroy()
-        end
-    end
-end
-
 local contentFrame = Instance.new("Frame")
 contentFrame.Name = "Content"
 contentFrame.Size = UDim2.new(1, -100, 1, 0)
 contentFrame.Position = UDim2.new(0, 100, 0, 0)
 contentFrame.BackgroundColor3 = Color3.fromRGB(15, 0, 30)
 contentFrame.Parent = menuFrame
+
+local function clearContent()
+    for _, child in pairs(contentFrame:GetChildren()) do
+        child:Destroy()
+    end
+end
 
 local function createTabButton(name, index)
     local btn = Instance.new("TextButton")
