@@ -1,357 +1,248 @@
--- Roblox ESP & High Jump Menu with Key Input and Neon Design by @vskdeniss
+--[[
+  Name-ESP mit Menü (LocalScript)
+  - Menü erscheint beim Start
+  - Buttons: "ESP AN" / "ESP AUS"
+  - Hotkey: "M" zum Menü ein-/ausblenden
+  - Zeigt Spielernamen über Köpfen (BillboardGui)
+  - Nur Roblox-APIs (für eigene Spiele / mit Erlaubnis verwenden)
+]]
 
 local Players = game:GetService("Players")
-local localPlayer = Players.LocalPlayer
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
 
-local correctKey = "VSK-65929"
+local LocalPlayer = Players.LocalPlayer
 
--- Create ScreenGui
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "KeyInputGui"
-screenGui.Parent = localPlayer:WaitForChild("PlayerGui")
+-- === Konfig ===
+local HOTKEY_TOGGLE_MENU = Enum.KeyCode.M
+local LABEL_OFFSET = Vector3.new(0, 2.5, 0)
+local LABEL_SIZE = UDim2.new(0, 200, 0, 40)
 
--- ************** KEY INPUT POPUP ******************
+-- === State ===
+local ESP_ENABLED = false
+local espStore = {} -- [Character] = BillboardGui
+local ui = nil      -- ScreenGui Referenz
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 300, 0, 150)
-frame.Position = UDim2.new(0.5, -150, 0.5, -75)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.BorderSizePixel = 0
-frame.Parent = screenGui
-frame.AnchorPoint = Vector2.new(0.5, 0.5)
-frame.Visible = true
+-- === UI erstellen ===
+local function createUI()
+	local screen = Instance.new("ScreenGui")
+	screen.Name = "ESP_Menu"
+	screen.ResetOnSpawn = false
 
-local titleLabel = Instance.new("TextLabel")
-titleLabel.Text = "Please enter the key:"
-titleLabel.Size = UDim2.new(1, 0, 0, 40)
-titleLabel.BackgroundTransparency = 1
-titleLabel.TextColor3 = Color3.new(1, 1, 1)
-titleLabel.Font = Enum.Font.SourceSansBold
-titleLabel.TextSize = 24
-titleLabel.Parent = frame
+	local frame = Instance.new("Frame")
+	frame.Name = "Panel"
+	frame.AnchorPoint = Vector2.new(0.5, 0)
+	frame.Position = UDim2.new(0.5, 0, 0.1, 0)
+	frame.Size = UDim2.new(0, 260, 0, 140)
+	frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+	frame.BackgroundTransparency = 0.1
+	frame.BorderSizePixel = 0
+	frame.Parent = screen
+	-- Rundung
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 14)
+	corner.Parent = frame
 
-local keyBox = Instance.new("TextBox")
-keyBox.PlaceholderText = "Your key here"
-keyBox.Size = UDim2.new(1, -20, 0, 40)
-keyBox.Position = UDim2.new(0, 10, 0, 50)
-keyBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-keyBox.TextColor3 = Color3.new(1, 1, 1)
-keyBox.Font = Enum.Font.SourceSans
-keyBox.TextSize = 24
-keyBox.ClearTextOnFocus = false
-keyBox.Parent = frame
-keyBox.Text = ""
+	local title = Instance.new("TextLabel")
+	title.Name = "Title"
+	title.Size = UDim2.new(1, -20, 0, 36)
+	title.Position = UDim2.new(0, 10, 0, 8)
+	title.BackgroundTransparency = 1
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 20
+	title.Text = "ESP Menü"
+	title.TextColor3 = Color3.fromRGB(255, 255, 255)
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.Parent = frame
 
-local submitButton = Instance.new("TextButton")
-submitButton.Text = "Confirm"
-submitButton.Size = UDim2.new(1, -20, 0, 40)
-submitButton.Position = UDim2.new(0, 10, 0, 100)
-submitButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
-submitButton.TextColor3 = Color3.new(1, 1, 1)
-submitButton.Font = Enum.Font.SourceSansBold
-submitButton.TextSize = 24
-submitButton.Parent = frame
+	local status = Instance.new("TextLabel")
+	status.Name = "Status"
+	status.Size = UDim2.new(1, -20, 0, 24)
+	status.Position = UDim2.new(0, 10, 0, 44)
+	status.BackgroundTransparency = 1
+	status.Font = Enum.Font.Gotham
+	status.TextSize = 16
+	status.Text = "Status: AUS"
+	status.TextColor3 = Color3.fromRGB(220, 220, 220)
+	status.TextXAlignment = Enum.TextXAlignment.Left
+	status.Parent = frame
 
-local errorLabel = Instance.new("TextLabel")
-errorLabel.Text = ""
-errorLabel.Size = UDim2.new(1, -20, 0, 25)
-errorLabel.Position = UDim2.new(0, 10, 0, 145)
-errorLabel.TextColor3 = Color3.new(1, 0, 0)
-errorLabel.BackgroundTransparency = 1
-errorLabel.Font = Enum.Font.SourceSansBold
-errorLabel.TextSize = 18
-errorLabel.Parent = frame
+	local btnOn = Instance.new("TextButton")
+	btnOn.Name = "BtnOn"
+	btnOn.Size = UDim2.new(0.45, -10, 0, 40)
+	btnOn.Position = UDim2.new(0.05, 0, 0, 80)
+	btnOn.BackgroundColor3 = Color3.fromRGB(40, 170, 90)
+	btnOn.BorderSizePixel = 0
+	btnOn.Text = "ESP AN"
+	btnOn.Font = Enum.Font.GothamBold
+	btnOn.TextSize = 18
+	btnOn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	btnOn.Parent = frame
+	local onCorner = Instance.new("UICorner")
+	onCorner.CornerRadius = UDim.new(0, 10)
+	onCorner.Parent = btnOn
 
--- ************** MENU GUI ******************
+	local btnOff = Instance.new("TextButton")
+	btnOff.Name = "BtnOff"
+	btnOff.Size = UDim2.new(0.45, -10, 0, 40)
+	btnOff.Position = UDim2.new(0.5, 10, 0, 80)
+	btnOff.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+	btnOff.BorderSizePixel = 0
+	btnOff.Text = "ESP AUS"
+	btnOff.Font = Enum.Font.GothamBold
+	btnOff.TextSize = 18
+	btnOff.TextColor3 = Color3.fromRGB(255, 255, 255)
+	btnOff.Parent = frame
+	local offCorner = Instance.new("UICorner")
+	offCorner.CornerRadius = UDim.new(0, 10)
+	offCorner.Parent = btnOff
 
-local menuFrame = Instance.new("Frame")
-menuFrame.Size = UDim2.new(0, 700, 0, 400)  -- Breiter und höher für mehr Platz
-menuFrame.Position = UDim2.new(0.5, -350, 0.5, -200)  -- Zentriert
-menuFrame.BackgroundColor3 = Color3.fromRGB(30, 0, 50)
-menuFrame.BorderSizePixel = 0
-menuFrame.Visible = false
-menuFrame.Parent = screenGui
-menuFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+	-- Draggable (einfach)
+	local dragging = false
+	local dragStart, startPos
+	frame.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = true
+			dragStart = input.Position
+			startPos = frame.Position
+		end
+	end)
+	frame.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = false
+		end
+	end)
+	UIS.InputChanged:Connect(function(input)
+		if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+			local delta = input.Position - dragStart
+			frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		end
+	end)
 
-local uiStroke = Instance.new("UIStroke")
-uiStroke.Color = Color3.fromRGB(170, 0, 255)
-uiStroke.Thickness = 3
-uiStroke.Parent = menuFrame
+	ui = screen
+	screen.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Sidebar
-local sidebar = Instance.new("Frame")
-sidebar.Size = UDim2.new(0, 100, 1, 0)
-sidebar.Position = UDim2.new(0, 0, 0, 0)
-sidebar.BackgroundColor3 = Color3.fromRGB(20, 0, 40)
-sidebar.Parent = menuFrame
-
-local uiStrokeSidebar = Instance.new("UIStroke")
-uiStrokeSidebar.Color = Color3.fromRGB(150, 0, 230)
-uiStrokeSidebar.Thickness = 2
-uiStrokeSidebar.Parent = sidebar
-
-local tabs = {"🏠 Home", "👁️ Visual", "🚶 Movement", "⚙️ Misc"}
-
-local selectedTab = nil
-
-local contentFrame = Instance.new("Frame")
-contentFrame.Name = "Content"
-contentFrame.Size = UDim2.new(1, -100, 1, 0)
-contentFrame.Position = UDim2.new(0, 100, 0, 0)
-contentFrame.BackgroundColor3 = Color3.fromRGB(15, 0, 30)
-contentFrame.Parent = menuFrame
-
-local function clearContent()
-    for _, child in pairs(contentFrame:GetChildren()) do
-        child:Destroy()
-    end
+	return {
+		screen = screen,
+		frame = frame,
+		status = status,
+		btnOn = btnOn,
+		btnOff = btnOff,
+	}
 end
 
-local function createTabButton(name, index)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 0, 50)
-    btn.Position = UDim2.new(0, 0, 0, (index - 1) * 50)
-    btn.BackgroundColor3 = Color3.fromRGB(40, 0, 80)
-    btn.TextColor3 = Color3.fromRGB(220, 190, 255)
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 20
-    btn.Text = name
-    btn.AutoButtonColor = false
-    btn.Parent = sidebar
+-- === ESP Logik ===
+local function createBillboardGui(adornPart, playerName)
+	local bb = Instance.new("BillboardGui")
+	bb.Name = "NameESP"
+	bb.AlwaysOnTop = true
+	bb.Size = LABEL_SIZE
+	bb.StudsOffset = LABEL_OFFSET
+	bb.Adornee = adornPart
+	bb.LightInfluence = 0
 
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(170, 0, 255)
-    stroke.Thickness = 2
-    stroke.Parent = btn
+	local tl = Instance.new("TextLabel")
+	tl.Name = "Label"
+	tl.Size = UDim2.new(1, 0, 1, 0)
+	tl.BackgroundTransparency = 1
+	tl.TextScaled = true
+	tl.Font = Enum.Font.GothamBold
+	tl.Text = playerName
+	tl.TextColor3 = Color3.new(1, 1, 1)
+	tl.TextStrokeTransparency = 0.5
+	tl.Parent = bb
 
-    btn.MouseEnter:Connect(function()
-        btn.BackgroundColor3 = Color3.fromRGB(120, 0, 200)
-    end)
-    btn.MouseLeave:Connect(function()
-        if selectedTab ~= btn then
-            btn.BackgroundColor3 = Color3.fromRGB(40, 0, 80)
-        end
-    end)
-
-    btn.MouseButton1Click:Connect(function()
-        if selectedTab then
-            selectedTab.BackgroundColor3 = Color3.fromRGB(40, 0, 80)
-        end
-        selectedTab = btn
-        selectedTab.BackgroundColor3 = Color3.fromRGB(170, 0, 255)
-        clearContent()
-        if name == "🏠 Home" then
-            showHome()
-        elseif name == "👁️ Visual" then
-            showVisual()
-        elseif name == "🚶 Movement" then
-            showMovement()
-        elseif name == "⚙️ Misc" then
-            showMisc()
-        end
-    end)
-
-    return btn
+	return bb
 end
 
--- Create tabs
-for i, tabName in ipairs(tabs) do
-    createTabButton(tabName, i)
+local function addESPForCharacter(character, player)
+	if not ESP_ENABLED then return end
+	if not character or not character.Parent then return end
+	if espStore[character] then return end
+
+	local head = character:FindFirstChild("Head") or character:WaitForChild("Head", 3)
+	if not head then return end
+
+	local bb = createBillboardGui(head, player and player.Name or "Player")
+	bb.Parent = head
+	espStore[character] = bb
 end
 
--- ********* Notification function ************
-local function showNotification(text)
-    local notif = Instance.new("TextLabel")
-    notif.Size = UDim2.new(0, 250, 0, 50)
-    notif.Position = UDim2.new(0.5, -125, 0.8, 0)
-    notif.BackgroundColor3 = Color3.fromRGB(70, 0, 130)
-    notif.TextColor3 = Color3.fromRGB(230, 190, 255)
-    notif.Font = Enum.Font.GothamBold
-    notif.TextSize = 24
-    notif.Text = text
-    notif.BackgroundTransparency = 0.1
-    notif.BorderSizePixel = 0
-    notif.Parent = screenGui
-    notif.AnchorPoint = Vector2.new(0.5, 0.5)
-
-    local uiStroke = Instance.new("UIStroke")
-    uiStroke.Color = Color3.fromRGB(170, 0, 255)
-    uiStroke.Thickness = 3
-    uiStroke.Parent = notif
-
-    -- Fade out after 3 seconds
-    spawn(function()
-        wait(3)
-        for i = 1, 20 do
-            notif.TextTransparency = i * 0.05
-            notif.BackgroundTransparency = notif.BackgroundTransparency + 0.05
-            wait(0.05)
-        end
-        notif:Destroy()
-    end)
+local function removeESPForCharacter(character)
+	local bb = espStore[character]
+	if bb then
+		bb:Destroy()
+		espStore[character] = nil
+	end
 end
 
--- ********** ESP Functions **************
-
-local espEnabled = false
-local nameTags = {}
-
-local function createNameTag(player)
-    if player == localPlayer then return end
-    local head = player.Character and player.Character:FindFirstChild("Head")
-    if not head then return end
-
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "NameTag"
-    billboard.Adornee = head
-    billboard.Size = UDim2.new(0, 120, 0, 30)
-    billboard.StudsOffset = Vector3.new(0, 2, 0)
-    billboard.AlwaysOnTop = true
-
-    local textLabel = Instance.new("TextLabel", billboard)
-    textLabel.BackgroundTransparency = 1
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.Text = player.Name
-    textLabel.TextColor3 = Color3.fromRGB(255, 105, 180) -- Pink
-    textLabel.TextStrokeColor3 = Color3.fromRGB(120, 0, 80)
-    textLabel.TextStrokeTransparency = 0
-    textLabel.Font = Enum.Font.GothamBold
-    textLabel.TextScaled = true
-
-    billboard.Parent = head
-    return billboard
+local function clearAllESP()
+	for character, _ in pairs(espStore) do
+		removeESPForCharacter(character)
+	end
 end
 
-local function addESP()
-    for _, player in pairs(Players:GetPlayers()) do
-        if player.Character and player.Character:FindFirstChild("Head") and not nameTags[player] then
-            local tag = createNameTag(player)
-            nameTags[player] = tag
-        end
-    end
+local function setESPEnabled(state, statusLabel)
+	ESP_ENABLED = state
+	if ESP_ENABLED then
+		-- Für alle vorhandenen Spieler aktivieren
+		for _, plr in ipairs(Players:GetPlayers()) do
+			if plr ~= LocalPlayer then
+				local char = plr.Character or plr.CharacterAdded:Wait()
+				addESPForCharacter(char, plr)
+			end
+		end
+		if statusLabel then statusLabel.Text = "Status: AN" end
+	else
+		clearAllESP()
+		if statusLabel then statusLabel.Text = "Status: AUS" end
+	end
 end
 
-local function removeESP()
-    for player, tag in pairs(nameTags) do
-        if tag then tag:Destroy() end
-    end
-    nameTags = {}
-end
-
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function()
-        if espEnabled then
-            wait(1)
-            if player.Character and player.Character:FindFirstChild("Head") then
-                if not nameTags[player] then
-                    local tag = createNameTag(player)
-                    nameTags[player] = tag
-                end
-            end
-        end
-    end)
+-- === Setup ===
+local elements = createUI()
+elements.btnOn.MouseButton1Click:Connect(function()
+	setESPEnabled(true, elements.status)
+end)
+elements.btnOff.MouseButton1Click:Connect(function()
+	setESPEnabled(false, elements.status)
 end)
 
--- ********** Home Tab **********
-
-function showHome()
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -20, 0, 80)
-    label.Position = UDim2.new(0, 10, 0, 20)
-    label.BackgroundTransparency = 1
-    label.TextColor3 = Color3.fromRGB(230, 190, 255)
-    label.Font = Enum.Font.GothamBlack
-    label.TextSize = 32
-    label.Text = "✨ Menu created by @vskdeniss ✨"
-    label.TextWrapped = true
-    label.TextStrokeColor3 = Color3.fromRGB(150, 0, 200)
-    label.TextStrokeTransparency = 0
-    label.Parent = contentFrame
-end
-
--- ********** Visual Tab **********
-
-function showVisual()
-    local espToggle = Instance.new("TextButton")
-    espToggle.Size = UDim2.new(0, 150, 0, 50)
-    espToggle.Position = UDim2.new(0, 20, 0, 20)
-    espToggle.Text = "Toggle ESP"
-    espToggle.Font = Enum.Font.GothamBold
-    espToggle.TextSize = 22
-    espToggle.BackgroundColor3 = Color3.fromRGB(80, 0, 130)
-    espToggle.TextColor3 = Color3.fromRGB(255, 192, 203) -- Pink
-    espToggle.Parent = contentFrame
-
-    espToggle.MouseButton1Click:Connect(function()
-        espEnabled = not espEnabled
-        if espEnabled then
-            addESP()
-            showNotification("ESP Enabled")
-        else
-            removeESP()
-            showNotification("ESP Disabled")
-        end
-    end)
-end
-
--- ********** Movement Tab **********
-
-local highJumpEnabled = false
-local defaultJumpPower = localPlayer.Character and localPlayer.Character.Humanoid.JumpPower or 50
-
-function showMovement()
-    local jumpToggle = Instance.new("TextButton")
-    jumpToggle.Size = UDim2.new(0, 150, 0, 50)
-    jumpToggle.Position = UDim2.new(0, 20, 0, 20)
-    jumpToggle.Text = "Toggle High Jump"
-    jumpToggle.Font = Enum.Font.GothamBold
-    jumpToggle.TextSize = 22
-    jumpToggle.BackgroundColor3 = Color3.fromRGB(80, 0, 130)
-    jumpToggle.TextColor3 = Color3.fromRGB(255, 192, 203) -- Pink
-    jumpToggle.Parent = contentFrame
-
-    jumpToggle.MouseButton1Click:Connect(function()
-        highJumpEnabled = not highJumpEnabled
-        local char = localPlayer.Character
-        if char then
-            local humanoid = char:FindFirstChildOfClass("Humanoid")
-            if humanoid then
-                if highJumpEnabled then
-                    humanoid.JumpPower = 150
-                    showNotification("High Jump Enabled")
-                else
-                    humanoid.JumpPower = 50
-                    showNotification("High Jump Disabled")
-                end
-            end
-        end
-    end)
-end
-
--- ********** Misc Tab (empty for now) **********
-
-function showMisc()
-    local infoLabel = Instance.new("TextLabel")
-    infoLabel.Size = UDim2.new(1, -20, 0, 50)
-    infoLabel.Position = UDim2.new(0, 10, 0, 20)
-    infoLabel.BackgroundTransparency = 1
-    infoLabel.TextColor3 = Color3.fromRGB(230, 190, 255)
-    infoLabel.Font = Enum.Font.GothamBold
-    infoLabel.TextSize = 24
-    infoLabel.Text = "No misc options yet"
-    infoLabel.Parent = contentFrame
-end
-
--- ********** Submit Button Logic **********
-
-submitButton.MouseButton1Click:Connect(function()
-    if keyBox.Text == correctKey then
-        frame.Visible = false
-        menuFrame.Visible = true
-        -- Auto select Home tab
-        sidebar:GetChildren()[1].MouseButton1Click:Fire()
-    else
-        errorLabel.Text = "Incorrect key, please try again."
-        keyBox.Text = ""
-    end
+-- Menü per Hotkey ein-/ausblenden
+UIS.InputBegan:Connect(function(input, gp)
+	if gp then return end
+	if input.KeyCode == HOTKEY_TOGGLE_MENU then
+		if ui then
+			ui.Enabled = not ui.Enabled
+		end
+	end
 end)
+
+-- Spieler-Events
+Players.PlayerAdded:Connect(function(plr)
+	if plr == LocalPlayer then return end
+	plr.CharacterAdded:Connect(function(char)
+		if ESP_ENABLED then
+			task.wait(0.1)
+			addESPForCharacter(char, plr)
+		end
+	end)
+end)
+
+Players.PlayerRemoving:Connect(function(plr)
+	if plr == LocalPlayer then return end
+	local char = plr.Character
+	if char then removeESPForCharacter(char) end
+end)
+
+-- Cleanup wenn Charakter verschwindet
+RunService.Heartbeat:Connect(function()
+	for character, _ in pairs(espStore) do
+		if not character.Parent then
+			removeESPForCharacter(character)
+		end
+	end
+end)
+
+print("[ESP-Menü] Mit Buttons AN/AUS steuern, 'M' für Menü anzeigen/verstecken.")
